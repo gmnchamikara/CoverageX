@@ -8,12 +8,17 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: taskapp
-      MYSQL_USER: root
-      MYSQL_PASSWORD: root
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1"]
+      interval: 10s
+      retries: 5
+      start_period: 20s
+    networks:
+      - app_network
 
   backend:
     build:
@@ -22,14 +27,18 @@ services:
     container_name: node_backend
     restart: always
     ports:
-      - "3001:3000"  # Maps host port 3001 to container's port 3000
+      - "8181:8181"  # Maps host port 8181 to container's port 8181
     environment:
       DB_HOST: db
       DB_USER: root
       DB_PASSWORD: root
       DB_NAME: taskapp
+      DB_PORT: 3307
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+    networks:
+      - app_network
 
   frontend:
     build:
@@ -41,6 +50,11 @@ services:
       - "3000:3000"
     depends_on:
       - backend
+    networks:
+      - app_network
 
 volumes:
   db_data:
+
+networks:
+  app_network:
